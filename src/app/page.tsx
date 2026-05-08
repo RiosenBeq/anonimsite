@@ -4,12 +4,8 @@ import { LiveTicker } from "@/components/landing/LiveTicker";
 import { OrbitalGalaxy } from "@/components/landing/OrbitalGalaxy";
 import { QuestionCard } from "@/components/QuestionCard";
 import { Eyebrow } from "@/components/primitives";
-import {
-  IconArrow,
-  IconCheck,
-  IconShield,
-} from "@/components/icons";
-import { QUESTIONS } from "@/lib/data";
+import { IconArrow, IconCheck, IconShield } from "@/components/icons";
+import { fetchQuestions } from "@/lib/queries";
 
 const HOW_STEPS = [
   {
@@ -34,7 +30,11 @@ const HOW_STEPS = [
   },
 ] as const;
 
-export default function LandingPage() {
+export const revalidate = 30;
+
+export default async function LandingPage() {
+  const trending = await fetchQuestions({ limit: 3 });
+
   return (
     <div className="landing">
       <section className="hero">
@@ -93,24 +93,26 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="section">
-        <div className="section-head">
-          <div>
-            <Eyebrow live>Live in the feed</Eyebrow>
-            <h2 className="h-display h2" style={{ marginTop: 14 }}>
-              Honest questions, <span className="italic-accent">moving right now.</span>
-            </h2>
+      {trending.length > 0 && (
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <Eyebrow live>Live in the feed</Eyebrow>
+              <h2 className="h-display h2" style={{ marginTop: 14 }}>
+                Honest questions, <span className="italic-accent">moving right now.</span>
+              </h2>
+            </div>
+            <Link className="btn btn-pill-dark" href="/feed">
+              Open the full feed <IconArrow size={13} />
+            </Link>
           </div>
-          <Link className="btn btn-pill-dark" href="/feed">
-            Open the full feed <IconArrow size={13} />
-          </Link>
-        </div>
-        <div className="trend-grid">
-          {QUESTIONS.slice(0, 3).map((q) => (
-            <QuestionCard key={q.id} question={q} />
-          ))}
-        </div>
-      </section>
+          <div className="trend-grid">
+            {trending.map((q) => (
+              <QuestionCard key={q.id} question={q} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="section how">
         <div>

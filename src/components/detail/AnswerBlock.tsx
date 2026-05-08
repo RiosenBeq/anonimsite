@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { IconBookmark, IconMore, IconMsg, IconShield } from "@/components/icons";
 import { PulseDot } from "@/components/primitives";
 import { HelpfulnessRing } from "@/components/detail/HelpfulnessRing";
+import { toggleReactionAction } from "@/lib/actions";
 import type { Answer } from "@/lib/types";
+import type { ReactionKind } from "@/lib/supabase/database.types";
 
 const REACTIONS = [
   { k: "honest", label: "Honest", glyph: "✶" },
@@ -13,33 +15,44 @@ const REACTIONS = [
   { k: "deep", label: "Deep", glyph: "≋" },
 ] as const;
 
-type ReactionKey = (typeof REACTIONS)[number]["k"];
+export type ReactionCounts = Record<ReactionKind, number>;
 
 interface AnswerBlockProps {
   answer: Answer;
+  initialCounts: ReactionCounts;
+  initialMine: ReactionKind | null;
 }
 
-export function AnswerBlock({ answer: a }: AnswerBlockProps) {
-  const [counts, setCounts] = useState<Record<ReactionKey, number>>({
-    honest: 84,
-    warm: 41,
-    useful: 122,
-    deep: 33,
-  });
-  const [mine, setMine] = useState<ReactionKey | null>(null);
+export function AnswerBlock({ answer: a, initialCounts, initialMine }: AnswerBlockProps) {
+  const [counts, setCounts] = useState<ReactionCounts>(initialCounts);
+  const [mine, setMine] = useState<ReactionKind | null>(initialMine);
+  const [pending, startTransition] = useTransition();
 
-  const pick = (k: ReactionKey) => {
-    if (mine === k) {
-      setCounts((c) => ({ ...c, [k]: c[k] - 1 }));
-      setMine(null);
-      return;
-    }
+  const pick = (k: ReactionKind) => {
+    if (pending) return;
+    const prev = mine;
+
+    // optimistic
     setCounts((c) => {
-      const next = { ...c, [k]: c[k] + 1 };
-      if (mine) next[mine] = next[mine] - 1;
+      const next: ReactionCounts = { ...c };
+      if (prev === k) {
+        next[k] = Math.max(0, next[k] - 1);
+      } else {
+        if (prev) next[prev] = Math.max(0, next[prev] - 1);
+        next[k] = next[k] + 1;
+      }
       return next;
     });
-    setMine(k);
+    setMine(prev === k ? null : k);
+
+    startTransition(async () => {
+      const res = await toggleReactionAction({ answerId: a.id, kind: k });
+      if (!res.ok) {
+        // revert
+        setMine(prev);
+        setCounts(initialCounts);
+      }
+    });
   };
 
   return (
@@ -95,6 +108,7 @@ export function AnswerBlock({ answer: a }: AnswerBlockProps) {
               type="button"
               className={`react ${mine === o.k ? "on" : ""}`}
               onClick={() => pick(o.k)}
+              disabled={pending}
             >
               <span className="react-glyph">{o.glyph}</span>
               <span className="react-l">{o.label}</span>

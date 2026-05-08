@@ -2,8 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { PulseDot } from "@/components/primitives";
+import { useLiveQuestions } from "@/lib/supabase/realtime";
 
-const ITEMS = [
+interface TickerItem {
+  who: string;
+  what: string;
+  time: string;
+  topic?: string;
+}
+
+const FALLBACK: TickerItem[] = [
   { who: "Someone in Berlin", what: "asked in The Mind", time: "now" },
   { who: "An anonymous reader", what: "saved a question", time: "2s" },
   { who: "Wren", what: "answered in Career", time: "4s" },
@@ -12,14 +20,30 @@ const ITEMS = [
 ];
 
 export function LiveTicker() {
+  const [items, setItems] = useState<TickerItem[]>(FALLBACK);
   const [i, setI] = useState(0);
 
-  useEffect(() => {
-    const t = setInterval(() => setI((x) => (x + 1) % ITEMS.length), 2400);
-    return () => clearInterval(t);
-  }, []);
+  useLiveQuestions((q) => {
+    setItems((prev) =>
+      [
+        {
+          who: q.pseudonym,
+          what: `asked in #${q.topic_slug}`,
+          time: "now",
+          topic: q.topic_slug,
+        },
+        ...prev,
+      ].slice(0, 12),
+    );
+    setI(0);
+  });
 
-  const cur = ITEMS[i];
+  useEffect(() => {
+    const t = setInterval(() => setI((x) => (x + 1) % items.length), 2400);
+    return () => clearInterval(t);
+  }, [items.length]);
+
+  const cur = items[i] ?? FALLBACK[0];
   return (
     <div className="ticker">
       <PulseDot />

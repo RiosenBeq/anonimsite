@@ -3,7 +3,7 @@ import { ExploreGalaxy } from "@/components/explore/Galaxy";
 import { QuestionCard } from "@/components/QuestionCard";
 import { Eyebrow } from "@/components/primitives";
 import { IconArrow, IconPlus, IconSearch } from "@/components/icons";
-import { QUESTIONS } from "@/lib/data";
+import { fetchQuestions, fetchTopics } from "@/lib/queries";
 
 const SEASONAL = [
   { l: "Late November threads", m: "247 questions", c: "var(--violet)" },
@@ -18,7 +18,20 @@ export const metadata = {
     "A small universe of honest curiosity. Eight rooms, each a different kind of question.",
 };
 
-export default function ExplorePage() {
+export const revalidate = 60;
+
+export default async function ExplorePage() {
+  const [topics, allQuestions, picks] = await Promise.all([
+    fetchTopics(),
+    fetchQuestions({ limit: 80 }),
+    fetchQuestions({ limit: 3 }),
+  ]);
+
+  const topQuestionsByTopic: Record<string, typeof allQuestions> = {};
+  for (const t of topics) {
+    topQuestionsByTopic[t.slug] = allQuestions.filter((q) => q.topic === t.slug).slice(0, 4);
+  }
+
   return (
     <div className="explore-shell">
       <div className="explore-head">
@@ -43,7 +56,7 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      <ExploreGalaxy />
+      <ExploreGalaxy topics={topics} topQuestionsByTopic={topQuestionsByTopic} />
 
       <section className="moments">
         <div className="section-head" style={{ marginBottom: 24 }}>
@@ -71,24 +84,26 @@ export default function ExplorePage() {
         </div>
       </section>
 
-      <section className="picks">
-        <div className="section-head" style={{ marginBottom: 24 }}>
-          <div>
-            <Eyebrow>Editor&apos;s quiet picks</Eyebrow>
-            <h2 className="h-display h3" style={{ marginTop: 12 }}>
-              Threads worth a slow read.
-            </h2>
+      {picks.length > 0 && (
+        <section className="picks">
+          <div className="section-head" style={{ marginBottom: 24 }}>
+            <div>
+              <Eyebrow>Editor&apos;s quiet picks</Eyebrow>
+              <h2 className="h-display h3" style={{ marginTop: 12 }}>
+                Threads worth a slow read.
+              </h2>
+            </div>
+            <Link className="btn btn-pill-dark" href="/feed">
+              The full feed <IconArrow size={13} />
+            </Link>
           </div>
-          <Link className="btn btn-pill-dark" href="/feed">
-            The full feed <IconArrow size={13} />
-          </Link>
-        </div>
-        <div className="trend-grid">
-          {QUESTIONS.slice(3, 6).map((q) => (
-            <QuestionCard key={q.id} question={q} />
-          ))}
-        </div>
-      </section>
+          <div className="trend-grid">
+            {picks.map((q) => (
+              <QuestionCard key={q.id} question={q} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

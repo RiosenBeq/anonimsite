@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { IconArrow, IconPlus } from "@/components/icons";
 import { Eyebrow, PulseDot } from "@/components/primitives";
-import { NOTIFS, topicMeta } from "@/lib/data";
+import { topicMeta } from "@/lib/data";
+import type { Notif, Question, Topic } from "@/lib/types";
 
 const FOLLOWED = ["mind", "career", "relationships", "philosophy"];
 
@@ -14,24 +15,38 @@ const PULSE = [
   { t: "Creative", v: 28, c: "var(--accent)" },
 ];
 
-export function FeedSidebar() {
+interface FeedSidebarProps {
+  topics: Topic[];
+  notifications: Notif[];
+  resumeQuestion: Question | null;
+}
+
+export function FeedSidebar({ topics, notifications, resumeQuestion }: FeedSidebarProps) {
   return (
     <aside className="feed-side">
-      <div className="surface" style={{ padding: 18 }}>
-        <div className="side-head">
-          <Eyebrow>Continue where you left</Eyebrow>
-          <button className="side-link" type="button">
-            Resume <IconArrow size={11} />
-          </button>
-        </div>
-        <Link href="/q/q1" className="resume-card" style={{ display: "block" }}>
-          <div className="resume-bar">
-            <span style={{ width: "62%" }} />
+      {resumeQuestion && (
+        <div className="surface" style={{ padding: 18 }}>
+          <div className="side-head">
+            <Eyebrow>Continue where you left</Eyebrow>
+            <button className="side-link" type="button">
+              Resume <IconArrow size={11} />
+            </button>
           </div>
-          <div className="resume-q">&ldquo;How do you tell a partner of seven years…&rdquo;</div>
-          <div className="resume-meta">8 of 142 answers · 2 new since you left</div>
-        </Link>
-      </div>
+          <Link
+            href={`/q/${resumeQuestion.id}`}
+            className="resume-card"
+            style={{ display: "block" }}
+          >
+            <div className="resume-bar">
+              <span style={{ width: "62%" }} />
+            </div>
+            <div className="resume-q">&ldquo;{resumeQuestion.title.slice(0, 60)}…&rdquo;</div>
+            <div className="resume-meta">
+              {resumeQuestion.answers} answers · last read {resumeQuestion.age} ago
+            </div>
+          </Link>
+        </div>
+      )}
 
       <div className="surface" style={{ padding: 18 }}>
         <div className="side-head">
@@ -42,7 +57,7 @@ export function FeedSidebar() {
         </div>
         <div className="follow-list">
           {FOLLOWED.map((slug) => {
-            const t = topicMeta(slug);
+            const t = topicMeta(slug, topics);
             return (
               <div key={slug} className="follow-row">
                 <span className={`follow-dot follow-${t.color}`} />
@@ -86,7 +101,7 @@ export function FeedSidebar() {
           </button>
         </div>
         <div className="notif-list">
-          {NOTIFS.map((n, i) => (
+          {notifications.map((n, i) => (
             <div key={i} className="notif">
               <span className={`notif-dot notif-${n.kind}`} />
               <div className="notif-body">

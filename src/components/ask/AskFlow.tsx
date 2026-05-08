@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { IconArrow, IconCheck, IconClose, IconShield } from "@/components/icons";
 import { AiMark, Eyebrow, PulseDot } from "@/components/primitives";
-import { QUESTIONS, TOPICS, topicMeta } from "@/lib/data";
+import { askQuestionAction } from "@/lib/actions";
+import { generatePseudonym } from "@/lib/pseudonyms";
+import { askQuestionSchema } from "@/lib/validators";
+import type { Question, Topic } from "@/lib/types";
 
 const MOOD_OPTIONS = [
   "Tender",
@@ -19,32 +22,27 @@ const MOOD_OPTIONS = [
   "Practical",
 ];
 
-const PSEUDONYMS = [
-  "Quiet Wren",
-  "Slow River",
-  "Half Light",
-  "Open Door",
-  "North Pine",
-  "Soft Echo",
-  "Sand & Sea",
-  "Late Reader",
-];
+interface AskFlowProps {
+  topics: Topic[];
+  similarQuestions: Question[];
+}
 
-export function AskFlow() {
+export function AskFlow({ topics, similarQuestions }: AskFlowProps) {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [q, setQ] = useState("");
   const [topic, setTopic] = useState<string | null>(null);
   const [moods, setMoods] = useState<string[]>([]);
   const [context, setContext] = useState("");
-  const [pseudonym, setPseudonym] = useState("Quiet Wren");
+  const [pseudonym, setPseudonym] = useState(() => generatePseudonym());
+  const [error, setError] = useState<string | null>(null);
+  const [postedId, setPostedId] = useState<string | null>(null);
 
   const toggleMood = (m: string) =>
     setMoods((ms) => (ms.includes(m) ? ms.filter((x) => x !== m) : [...ms, m].slice(0, 3)));
 
-  const reroll = () => {
-    setPseudonym(PSEUDONYMS[Math.floor(Math.random() * PSEUDONYMS.length)]);
-  };
+  const reroll = () => setPseudonym(generatePseudonym());
 
   const aiSuggestions = useMemo(
     () => [
@@ -57,15 +55,43 @@ export function AskFlow() {
       },
       {
         title: "Best room for this",
-        body: "The Mind has 84 verified therapists answering this week. Career has the highest helpfulness this month.",
+        body:
+          topics.length > 0
+            ? `${topics.find((t) => t.slug === "mind")?.label ?? "The Mind"} has therapists answering this week. Career has the highest helpfulness this month.`
+            : "Pick the room that matches the shape of the question.",
       },
       {
         title: "Three threads with overlapping ground",
         body: "We'll show them after you ask. They won't cap your audience.",
       },
     ],
-    [q],
+    [q, topics],
   );
+
+  const submit = () => {
+    setError(null);
+    const parsed = askQuestionSchema.safeParse({
+      title: q,
+      context,
+      topicSlug: topic ?? "",
+      moods,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+    startTransition(async () => {
+      const res = await askQuestionAction(parsed.data);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setPostedId(res.data.questionId);
+      setStep(2);
+    });
+  };
+
+  const topicMeta = topics.find((t) => t.slug === topic);
 
   return (
     <div className="ask-shell">
@@ -83,8 +109,7 @@ export function AskFlow() {
           {step === 0 && (
             <>
               <h1 className="h-display" style={{ fontSize: 56, lineHeight: 1.05, marginTop: 18 }}>
-                Ask freely.{" "}
-                <span className="italic-accent">No one will know it was you.</span>
+                Ask freely. <span className="italic-accent">No one will know it was you.</span>
               </h1>
               <p className="ask-sub">
                 Anonim doesn&apos;t store your name, your face, or your account against this
@@ -135,7 +160,7 @@ export function AskFlow() {
               <div className="ask-field">
                 <label className="ask-label">Which room is this for?</label>
                 <div className="topic-pick">
-                  {TOPICS.slice(0, 8).map((t) => (
+                  {topics.slice(0, 8).map((t) => (
                     <button
                       key={t.slug}
                       type="button"
@@ -224,25 +249,48 @@ export function AskFlow() {
                 </div>
               </div>
 
-              <div className="similar-block">
-                <Eyebrow>Three people asked something nearby</Eyebrow>
-                <div className="similar-list">
-                  {QUESTIONS.slice(0, 3).map((s) => (
-                    <div key={s.id} className="similar-row">
-                      <span className="similar-q">{s.title}</span>
-                      <span className="similar-meta">
-                        {s.answers} answers · {s.age}
-                      </span>
-                    </div>
-                  ))}
+              {similarQuestions.length > 0 && (
+                <div className="similar-block">
+                  <Eyebrow>Three people asked something nearby</Eyebrow>
+                  <div className="similar-list">
+                    {similarQuestions.slice(0, 3).map((s) => (
+                      <Link key={s.id} href={`/q/${s.id}`} className="similar-row" style={{ display: "flex" }}>
+                        <span className="similar-q">{s.title}</span>
+                        <span className="similar-meta">
+                          {s.answers} answers · {s.age}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                  <div className="similar-foot">
+                    Yours is different — go ahead. Or read these first.
+                  </div>
                 </div>
-                <div className="similar-foot">
-                  Yours is different — go ahead. Or read these first.
+              )}
+
+              {error && (
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: 12,
+                    border: "1px solid var(--warm)",
+                    background: "rgba(255,138,91,0.08)",
+                    borderRadius: 8,
+                    color: "var(--warm)",
+                    fontSize: 13,
+                  }}
+                >
+                  {error}
                 </div>
-              </div>
+              )}
 
               <div className="ask-actions">
-                <button className="btn btn-pill-dark" type="button" onClick={() => setStep(0)}>
+                <button
+                  className="btn btn-pill-dark"
+                  type="button"
+                  onClick={() => setStep(0)}
+                  disabled={pending}
+                >
                   ← Back
                 </button>
                 <div style={{ flex: 1 }} />
@@ -250,9 +298,10 @@ export function AskFlow() {
                   type="button"
                   className="btn btn-primary"
                   style={{ padding: "12px 22px", fontSize: 14 }}
-                  onClick={() => setStep(2)}
+                  disabled={pending}
+                  onClick={submit}
                 >
-                  Send anonymously <IconArrow size={13} />
+                  {pending ? "Sending…" : "Send anonymously"} <IconArrow size={13} />
                 </button>
               </div>
             </>
@@ -285,7 +334,8 @@ export function AskFlow() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => router.push("/q/q1")}
+                  onClick={() => postedId && router.push(`/q/${postedId}`)}
+                  disabled={!postedId}
                 >
                   Watch it as it answers <IconArrow size={13} />
                 </button>
@@ -338,7 +388,7 @@ export function AskFlow() {
               <Eyebrow>Reading the room</Eyebrow>
               <div className="room-stat">
                 <div className="rs-cell">
-                  <div className="rs-num">{topic ? topicMeta(topic).count : "—"}</div>
+                  <div className="rs-num">{topicMeta?.count ?? "—"}</div>
                   <div className="rs-l">people in this room</div>
                 </div>
                 <div className="rs-cell">

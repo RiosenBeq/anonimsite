@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { IconArrow, IconEye, IconMsg } from "@/components/icons";
 import { AiMark, Eyebrow, PulseDot } from "@/components/primitives";
-import { ANSWERS, QUESTIONS } from "@/lib/data";
+import type { Answer, Question } from "@/lib/types";
 
-export function FeedFeatured() {
-  const q = QUESTIONS[2];
+interface FeedFeaturedProps {
+  question: Question;
+  previewAnswers: Answer[];
+}
+
+export function FeedFeatured({ question: q, previewAnswers }: FeedFeaturedProps) {
   return (
     <Link href={`/q/${q.id}`} className="feed-featured" style={{ textDecoration: "none" }}>
       <div className="ff-l">
@@ -41,7 +45,7 @@ export function FeedFeatured() {
           <span>?</span>
         </div>
         <div className="ff-stack">
-          {ANSWERS.slice(0, 3).map((a, i) => (
+          {previewAnswers.slice(0, 3).map((a, i) => (
             <div
               key={a.id}
               className="ff-mini"
@@ -53,7 +57,9 @@ export function FeedFeatured() {
               <span className="ff-mini-meta">
                 {a.handle.split(" · ")[0]} · {a.helpfulness}% helpful
               </span>
-              <span className="ff-mini-snip">&ldquo;{a.body[0].slice(0, 88)}…&rdquo;</span>
+              <span className="ff-mini-snip">
+                &ldquo;{(a.body[0] ?? "").slice(0, 88)}…&rdquo;
+              </span>
             </div>
           ))}
         </div>

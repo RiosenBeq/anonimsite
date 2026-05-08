@@ -5,7 +5,13 @@ import { FeedTabs } from "@/components/feed/FeedTabs";
 import { QuestionCard } from "@/components/QuestionCard";
 import { Eyebrow } from "@/components/primitives";
 import { IconFilter, IconGlobe, IconPlus } from "@/components/icons";
-import { QUESTIONS } from "@/lib/data";
+import {
+  fetchAnswers,
+  fetchFeaturedQuestion,
+  fetchQuestions,
+  fetchTopics,
+  NOTIFS_DEMO,
+} from "@/lib/queries";
 
 const RAIL_CHIPS = [
   "Tender questions",
@@ -24,8 +30,19 @@ export const metadata = {
     "Honest questions moving right now. Tender, curious, searching — asked anonymously, answered by people who've been there.",
 };
 
-export default function FeedPage() {
-  const items = QUESTIONS.filter((_, i) => i !== 2);
+export const revalidate = 15;
+
+export default async function FeedPage() {
+  const [topics, featured, items] = await Promise.all([
+    fetchTopics(),
+    fetchFeaturedQuestion(),
+    fetchQuestions({ limit: 12 }),
+  ]);
+
+  const previewAnswers = featured ? await fetchAnswers(featured.id, 3) : [];
+  const list = items.filter((q) => q.id !== featured?.id);
+  const resume = items.find((q) => !q.featured) ?? null;
+
   return (
     <div className="feed-shell">
       <div className="feed-hero">
@@ -50,7 +67,7 @@ export default function FeedPage() {
       <div className="feed-grid">
         <main className="feed-main">
           <FeedTabs />
-          <FeedFeatured />
+          {featured && <FeedFeatured question={featured} previewAnswers={previewAnswers} />}
           <div className="feed-rail">
             <Eyebrow>Wanderable</Eyebrow>
             <div className="rail-row">
@@ -62,12 +79,12 @@ export default function FeedPage() {
             </div>
           </div>
           <div className="feed-list">
-            {items.map((q) => (
+            {list.map((q) => (
               <QuestionCard key={q.id} question={q} showActions showMeta="full" />
             ))}
           </div>
         </main>
-        <FeedSidebar />
+        <FeedSidebar topics={topics} notifications={NOTIFS_DEMO} resumeQuestion={resume} />
       </div>
     </div>
   );

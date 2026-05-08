@@ -1,32 +1,58 @@
 import Link from "next/link";
-import { AnswerBlock } from "@/components/detail/AnswerBlock";
+import { notFound } from "next/navigation";
+import { AnswersList } from "@/components/detail/AnswersList";
 import { ComposerInline } from "@/components/detail/ComposerInline";
-import { IconArrow, IconBell, IconBookmark, IconLayers } from "@/components/icons";
+import { PresenceGrid } from "@/components/detail/Presence";
+import { SaveButton } from "@/components/detail/SaveButton";
+import { IconArrow, IconBell, IconLayers } from "@/components/icons";
 import { AiMark, Eyebrow, PulseDot, Tag } from "@/components/primitives";
-import { ANSWERS, QUESTIONS, questionById, topicMeta } from "@/lib/data";
+import { topicMeta } from "@/lib/data";
+import {
+  fetchAnswerReactionCounts,
+  fetchAnswers,
+  fetchMyReactionsForQuestion,
+  fetchMySaves,
+  fetchQuestion,
+  fetchQuestions,
+  fetchTopics,
+} from "@/lib/queries";
+import { getAnonimSession } from "@/lib/session";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateStaticParams() {
-  return QUESTIONS.map((q) => ({ id: q.id }));
-}
-
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params;
-  const q = questionById(id);
+  const q = await fetchQuestion(id);
+  if (!q) return { title: "Anonim" };
   return {
     title: `${q.title.slice(0, 80)} · Anonim`,
     description: q.summary,
   };
 }
 
+export const revalidate = 10;
+
 export default async function QuestionDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const q = questionById(id);
-  const t = topicMeta(q.topic);
-  const related = QUESTIONS.filter((r) => r.id !== q.id).slice(0, 4);
+  const sessionId = await getAnonimSession();
+
+  const [q, topics, answers, related, reactionCounts, myReactions, mySaves] = await Promise.all([
+    fetchQuestion(id),
+    fetchTopics(),
+    fetchAnswers(id, 25),
+    fetchQuestions({ limit: 5 }),
+    fetchAnswerReactionCounts(id),
+    fetchMyReactionsForQuestion(sessionId, id),
+    fetchMySaves(sessionId),
+  ]);
+
+  if (!q) notFound();
+
+  const t = topicMeta(q.topic, topics);
+  const relatedThreads = related.filter((r) => r.id !== q.id).slice(0, 4);
+  const initialSaved = mySaves.includes(q.id);
 
   return (
     <div className="detail-shell">
@@ -56,15 +82,18 @@ export default async function QuestionDetailPage({ params }: PageProps) {
             <h1 className="h-display" style={{ fontSize: 44, lineHeight: 1.1, marginTop: 22 }}>
               {q.title}
             </h1>
-            <p className="qhead-context">
-              <span style={{ color: "var(--text-3)" }}>Asker added: </span>
-              &ldquo;I&apos;ve thought about it for months. I&apos;m not asking what to do.
-              I&apos;m asking how to find the words. Please be gentle.&rdquo;
-            </p>
+            {q.summary && q.summary !== q.title && (
+              <p className="qhead-context">
+                <span style={{ color: "var(--text-3)" }}>Asker added: </span>
+                &ldquo;{q.summary}&rdquo;
+              </p>
+            )}
             <div className="qhead-actions">
-              <button className="btn btn-pill-dark" type="button">
-                <IconBookmark size={13} /> Save · {q.saves}
-              </button>
+              <SaveButton
+                questionId={q.id}
+                initialSaved={initialSaved}
+                initialCount={q.saves}
+              />
               <button className="btn btn-pill-dark" type="button">
                 <IconBell size={13} /> Notify if answered
               </button>
@@ -124,22 +153,41 @@ export default async function QuestionDetailPage({ params }: PageProps) {
               </button>
             </div>
             <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)" }}>
-              <PulseDot /> &nbsp;6 people are typing now
+              <PulseDot /> &nbsp;{Math.max(1, q.pulse)} people are typing now
             </div>
           </div>
 
-          <div className="answers-list">
-            {ANSWERS.map((a) => (
-              <AnswerBlock key={a.id} answer={a} />
-            ))}
+          {answers.length === 0 ? (
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                color: "var(--text-3)",
+                background: "var(--surface)",
+                border: "1px dashed var(--line-2)",
+                borderRadius: 16,
+              }}
+            >
+              No answers yet — yours could be the first.
+            </div>
+          ) : (
+            <AnswersList
+              questionId={q.id}
+              answers={answers}
+              reactionCountsById={reactionCounts}
+              myReactionByAnswerId={myReactions}
+            />
+          )}
+
+          {answers.length > 0 && q.answers > answers.length && (
             <div className="show-more">
               <button className="btn btn-outline" type="button">
-                Show {Math.max(0, q.answers - ANSWERS.length)} more answers
+                Show {q.answers - answers.length} more answers
               </button>
             </div>
-          </div>
+          )}
 
-          <ComposerInline />
+          <ComposerInline questionId={q.id} />
         </main>
 
         <aside className="detail-side">
@@ -157,7 +205,7 @@ export default async function QuestionDetailPage({ params }: PageProps) {
                 <div className="hg-l">flagged</div>
               </div>
               <div className="hg-cell">
-                <div className="hg-num">12</div>
+                <div className="hg-num">{q.answers}</div>
                 <div className="hg-l">in thread</div>
               </div>
             </div>
@@ -167,47 +215,37 @@ export default async function QuestionDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="surface" style={{ padding: 18 }}>
-            <div className="side-head">
-              <Eyebrow>If this resonated</Eyebrow>
-              <button className="side-link" type="button">
-                More
-              </button>
+          {relatedThreads.length > 0 && (
+            <div className="surface" style={{ padding: 18 }}>
+              <div className="side-head">
+                <Eyebrow>If this resonated</Eyebrow>
+                <button className="side-link" type="button">
+                  More
+                </button>
+              </div>
+              <div className="related-list">
+                {relatedThreads.map((r) => (
+                  <Link
+                    key={r.id}
+                    href={`/q/${r.id}`}
+                    className="related-row"
+                    style={{ display: "block" }}
+                  >
+                    <div className="related-q">{r.title}</div>
+                    <div className="related-meta">
+                      <Tag tone={topicMeta(r.topic, topics).color}>#{r.topic}</Tag>
+                      <span className="dot-sep" />
+                      <span>{r.answers} answers</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
-            <div className="related-list">
-              {related.map((r) => (
-                <Link key={r.id} href={`/q/${r.id}`} className="related-row" style={{ display: "block" }}>
-                  <div className="related-q">{r.title}</div>
-                  <div className="related-meta">
-                    <Tag tone={topicMeta(r.topic).color}>#{r.topic}</Tag>
-                    <span className="dot-sep" />
-                    <span>{r.answers} answers</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
+          )}
 
           <div className="surface" style={{ padding: 18 }}>
             <Eyebrow live>Anonymous presence</Eyebrow>
-            <div className="presence">
-              <div className="presence-grid">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="pres-dot"
-                    style={{ animationDelay: `${i * 0.18}s` }}
-                  />
-                ))}
-              </div>
-              <div className="presence-text">
-                <strong>12 anonymous readers</strong> are in this thread with you.
-                <span style={{ color: "var(--text-3)" }}>
-                  {" "}
-                  No one can see who anyone is, including us.
-                </span>
-              </div>
-            </div>
+            <PresenceGrid questionId={q.id} />
           </div>
         </aside>
       </div>

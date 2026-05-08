@@ -1,12 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { IconArrow, IconBookmark, IconLayers, IconShield, IconSpark } from "@/components/icons";
 import { Eyebrow } from "@/components/primitives";
+import { postAnswerAction } from "@/lib/actions";
+import { postAnswerSchema } from "@/lib/validators";
 
-export function ComposerInline() {
+interface ComposerInlineProps {
+  questionId: string;
+}
+
+export function ComposerInline({ questionId }: ComposerInlineProps) {
+  const router = useRouter();
   const [v, setV] = useState("");
   const [anon, setAnon] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const submit = () => {
+    setError(null);
+    const parsed = postAnswerSchema.safeParse({ questionId, body: v });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+    startTransition(async () => {
+      const res = await postAnswerAction(parsed.data);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setV("");
+      router.refresh();
+    });
+  };
 
   return (
     <div className="composer-inline" id="composer">
@@ -32,6 +60,20 @@ export function ComposerInline() {
             <IconShield size={11} /> Add a content note
           </span>
         </div>
+        {error && (
+          <div
+            style={{
+              padding: 10,
+              border: "1px solid var(--warm)",
+              background: "rgba(255,138,91,0.08)",
+              borderRadius: 8,
+              color: "var(--warm)",
+              fontSize: 13,
+            }}
+          >
+            {error}
+          </div>
+        )}
         <div className="composer-foot">
           <label className="anon-toggle">
             <span
@@ -46,9 +88,7 @@ export function ComposerInline() {
             >
               <span className="anon-thumb" />
             </span>
-            <span>
-              {anon ? "Anonymous · new pseudonym for this thread" : "Visible as: Wren"}
-            </span>
+            <span>{anon ? "Anonymous · new pseudonym for this thread" : "Visible as: Wren"}</span>
           </label>
           <div className="composer-actions">
             <button className="btn btn-pill-dark" type="button" style={{ fontSize: 12.5 }}>
@@ -61,9 +101,10 @@ export function ComposerInline() {
               className="btn btn-primary"
               type="button"
               style={{ fontSize: 13 }}
-              disabled={!v}
+              disabled={!v || pending}
+              onClick={submit}
             >
-              Send answer <IconArrow size={13} />
+              {pending ? "Sending…" : "Send answer"} <IconArrow size={13} />
             </button>
           </div>
         </div>

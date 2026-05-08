@@ -4,22 +4,21 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { IconArrow, IconBookmark, IconSearch } from "@/components/icons";
 import { Eyebrow, PulseDot } from "@/components/primitives";
-import { QUESTIONS, TOPICS, topicMeta } from "@/lib/data";
+import type { Question, Topic } from "@/lib/types";
 
 const ORBITS = [{ r: 110 }, { r: 200 }, { r: 290 }];
 const CX = 380;
 const CY = 380;
 
-export function ExploreGalaxy() {
-  const [active, setActive] = useState("mind");
-  const t = topicMeta(active);
-  const topQs = useMemo(() => {
-    const filtered = QUESTIONS.filter((q) => q.topic === active);
-    const padded = [...filtered, ...QUESTIONS].filter(
-      (q, i, arr) => arr.findIndex((x) => x.id === q.id) === i,
-    );
-    return padded.slice(0, 5);
-  }, [active]);
+interface GalaxyProps {
+  topics: Topic[];
+  topQuestionsByTopic: Record<string, Question[]>;
+}
+
+export function ExploreGalaxy({ topics, topQuestionsByTopic }: GalaxyProps) {
+  const [active, setActive] = useState<string>(topics[0]?.slug ?? "mind");
+  const t = topics.find((x) => x.slug === active) ?? topics[0];
+  const topQs = topQuestionsByTopic[active] ?? [];
 
   const stars = useMemo(
     () =>
@@ -35,6 +34,8 @@ export function ExploreGalaxy() {
       }),
     [],
   );
+
+  if (!t) return null;
 
   return (
     <div className="explore-grid">
@@ -53,14 +54,8 @@ export function ExploreGalaxy() {
             />
           ))}
 
-          <svg
-            className="g-lines"
-            viewBox="0 0 760 760"
-            width="760"
-            height="760"
-            aria-hidden
-          >
-            {TOPICS.map((tp, i) => {
+          <svg className="g-lines" viewBox="0 0 760 760" width="760" height="760" aria-hidden>
+            {topics.map((tp, i) => {
               const ring = i % 3;
               const r = ORBITS[ring].r;
               const ang = (tp.angle * Math.PI) / 180;
@@ -88,7 +83,7 @@ export function ExploreGalaxy() {
             </div>
           </div>
 
-          {TOPICS.map((tp, i) => {
+          {topics.map((tp, i) => {
             const ring = i % 3;
             const r = ORBITS[ring].r;
             const ang = (tp.angle * Math.PI) / 180;
@@ -174,6 +169,11 @@ export function ExploreGalaxy() {
             </button>
           </div>
           <div className="related-list">
+            {topQs.length === 0 && (
+              <div style={{ color: "var(--text-3)", fontSize: 12.5, padding: "12px 0" }}>
+                No threads here yet. <Link href="/ask" style={{ color: "var(--accent)" }}>Be first</Link>.
+              </div>
+            )}
             {topQs.slice(0, 4).map((q) => (
               <Link
                 key={q.id}
