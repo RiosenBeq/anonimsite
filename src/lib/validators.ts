@@ -38,3 +38,23 @@ export type ToggleSaveInput = z.infer<typeof toggleSaveSchema>;
 
 export const toggleFollowSchema = z.object({ topicSlug: z.string().min(1) });
 export type ToggleFollowInput = z.infer<typeof toggleFollowSchema>;
+
+export const reportReasonSchema = z.enum([
+  "csam",
+  "violence_threat",
+  "hate_harassment",
+  "self_harm",
+  "illegal_activity",
+  "spam_scam",
+  "personal_info",
+  "other",
+]);
+export type ReportReasonInput = z.infer<typeof reportReasonSchema>;
+
+export const reportContentSchema = z.object({
+  targetType: z.enum(["question", "answer"]),
+  targetId: z.uuid(),
+  reason: reportReasonSchema,
+  details: z.string().max(1000).optional().default(""),
+});
+export type ReportContentInput = z.infer<typeof reportContentSchema>;

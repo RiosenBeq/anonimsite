@@ -1,8 +1,11 @@
 import "server-only";
 
 import { formatDistanceToNowStrict } from "date-fns";
+import { maskBannedWords } from "@/lib/moderation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Answer, Notif, Question, Topic, TopicColor } from "@/lib/types";
+
+const mask = (s: string): string => maskBannedWords(s).masked;
 
 type Row<T> = T;
 
@@ -76,16 +79,15 @@ const mapTopic = (row: Row<TopicRow>): Topic => ({
   angle: row.angle,
 });
 
-const summaryFor = (q: QuestionRow): string =>
-  q.context && q.context.length > 0
-    ? q.context.length > 200
-      ? `${q.context.slice(0, 197)}…`
-      : q.context
-    : `A growing thread with ${compactNumber(q.answers_count)} answers and ${compactNumber(q.saves_count)} saves.`;
+const summaryFor = (q: QuestionRow): string => {
+  const ctx = mask(q.context ?? "");
+  if (ctx.length > 0) return ctx.length > 200 ? `${ctx.slice(0, 197)}…` : ctx;
+  return `A growing thread with ${compactNumber(q.answers_count)} answers and ${compactNumber(q.saves_count)} saves.`;
+};
 
 const mapQuestion = (q: Row<QuestionRow>): Question => ({
   id: q.id,
-  title: q.title,
+  title: mask(q.title),
   summary: summaryFor(q),
   topic: q.topic_slug,
   mood: q.moods[0] ?? "Open",
@@ -103,7 +105,10 @@ const mapAnswer = (a: Row<AnswerRow>): Answer => ({
   helpfulness: a.helpfulness,
   age: ageLabel(a.created_at),
   upvotes: a.upvotes,
-  body: a.body.split(/\n\s*\n/g).map((p) => p.trim()).filter(Boolean),
+  body: mask(a.body)
+    .split(/\n\s*\n/g)
+    .map((p) => p.trim())
+    .filter(Boolean),
   badge: a.badge ?? undefined,
 });
 

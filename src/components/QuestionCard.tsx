@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { MouseEvent } from "react";
 import { IconArrow, IconBookmark, IconEye, IconMsg } from "@/components/icons";
 import { AiMark, PulseDot, Tag } from "@/components/primitives";
+import { ReportButton } from "@/components/ReportButton";
 import { topicMeta } from "@/lib/data";
 import type { Question } from "@/lib/types";
 
@@ -62,8 +63,11 @@ export function QuestionCard({
             <span className="qcard-stat" style={{ color: "var(--accent)" }}>
               <PulseDot /> {q.pulse} reading
             </span>
-            <span style={{ marginLeft: "auto" }} className="qcard-stat">
-              <IconBookmark size={13} /> {q.saves}
+            <span style={{ marginLeft: "auto", display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <span className="qcard-stat">
+                <IconBookmark size={13} /> {q.saves}
+              </span>
+              <ReportButton targetType="question" targetId={q.id} />
             </span>
           </>
         ) : (
@@ -71,21 +75,24 @@ export function QuestionCard({
             <span className="qcard-stat">
               <IconBookmark size={13} /> {q.saves}
             </span>
-            {showActions && (
-              <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-                <button
-                  className="micro-btn"
-                  type="button"
-                  onClick={stop}
-                  aria-label="Save question"
-                >
-                  <IconBookmark size={12} /> Save
-                </button>
-                <button className="micro-btn" type="button" aria-label="Read question">
-                  Read <IconArrow size={11} />
-                </button>
-              </span>
-            )}
+            <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+              <ReportButton targetType="question" targetId={q.id} />
+              {showActions && (
+                <>
+                  <button
+                    className="micro-btn"
+                    type="button"
+                    onClick={stop}
+                    aria-label="Save question"
+                  >
+                    <IconBookmark size={12} /> Save
+                  </button>
+                  <button className="micro-btn" type="button" aria-label="Read question">
+                    Read <IconArrow size={11} />
+                  </button>
+                </>
+              )}
+            </span>
           </>
         )}
       </div>
