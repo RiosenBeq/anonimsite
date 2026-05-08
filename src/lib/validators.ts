@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+// Anti-abuse fields attached to user-facing form submissions:
+// - hp: honeypot — must be empty (humans don't see it, bots fill it)
+// - renderedAt: client-side ms timestamp of form mount, used to enforce
+//   a minimum time-to-submit floor
+// - turnstileToken: Cloudflare Turnstile token (verified server-side)
+const antiAbuseShape = {
+  hp: z.string().max(200).optional().default(""),
+  renderedAt: z.number().int().nonnegative().optional(),
+  turnstileToken: z.string().max(4096).optional().default(""),
+};
+
 export const askQuestionSchema = z.object({
   title: z
     .string()
@@ -9,6 +20,7 @@ export const askQuestionSchema = z.object({
   context: z.string().max(2000, "The context is over 2000 characters.").optional().default(""),
   topicSlug: z.string().min(1, "Pick a room."),
   moods: z.array(z.string()).max(3, "Up to 3 moods.").default([]),
+  ...antiAbuseShape,
 });
 
 export type AskQuestionInput = z.infer<typeof askQuestionSchema>;
@@ -20,6 +32,7 @@ export const postAnswerSchema = z.object({
     .trim()
     .min(1, "Write something.")
     .max(5000, "That's longer than this thread allows."),
+  ...antiAbuseShape,
 });
 
 export type PostAnswerInput = z.infer<typeof postAnswerSchema>;

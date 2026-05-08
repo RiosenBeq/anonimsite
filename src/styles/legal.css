@@ -290,3 +290,21 @@
   font-size: 14px;
   line-height: 1.5;
 }
+
+/* ---------- Honeypot (bot magnet, invisible to humans) ---------- */
+.hp-field {
+  position: absolute !important;
+  left: -10000px !important;
+  top: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ---------- Turnstile widget host ---------- */
+.turnstile-host {
+  margin: 12px 0;
+  min-height: 65px;
+}

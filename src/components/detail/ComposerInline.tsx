@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import { IconArrow, IconBookmark, IconLayers, IconShield, IconSpark } from "@/components/icons";
 import { Eyebrow } from "@/components/primitives";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { postAnswerAction } from "@/lib/actions";
 import { postAnswerSchema } from "@/lib/validators";
 
@@ -18,11 +19,28 @@ export function ComposerInline({ questionId }: ComposerInlineProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const [hp, setHp] = useState("");
+  const renderedAt = useRef<number>(Date.now());
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const turnstileRequired = !!process.env.NEXT_PUBLIC_CF_TURNSTILE_SITE_KEY;
+  const onTurnstileToken = useCallback((t: string) => setTurnstileToken(t), []);
+  const onTurnstileError = useCallback(() => setTurnstileToken(""), []);
+
   const submit = () => {
     setError(null);
-    const parsed = postAnswerSchema.safeParse({ questionId, body: v });
+    const parsed = postAnswerSchema.safeParse({
+      questionId,
+      body: v,
+      hp,
+      renderedAt: renderedAt.current,
+      turnstileToken,
+    });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+    if (turnstileRequired && !turnstileToken) {
+      setError("Bot doğrulamasını tamamlayıp tekrar dener misin?");
       return;
     }
     startTransition(async () => {
@@ -74,6 +92,20 @@ export function ComposerInline({ questionId }: ComposerInlineProps) {
             {error}
           </div>
         )}
+        {turnstileRequired && (
+          <TurnstileWidget onToken={onTurnstileToken} onError={onTurnstileError} />
+        )}
+        {/* Honeypot — hidden from humans, magnet for bots. */}
+        <label className="hp-field" aria-hidden="true">
+          Website
+          <input
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={hp}
+            onChange={(e) => setHp(e.target.value)}
+          />
+        </label>
         <div className="composer-foot">
           <label className="anon-toggle">
             <span
@@ -101,7 +133,7 @@ export function ComposerInline({ questionId }: ComposerInlineProps) {
               className="btn btn-primary"
               type="button"
               style={{ fontSize: 13 }}
-              disabled={!v || pending}
+              disabled={!v || pending || (turnstileRequired && !turnstileToken)}
               onClick={submit}
             >
               {pending ? "Sending…" : "Send answer"} <IconArrow size={13} />
