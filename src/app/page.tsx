@@ -200,11 +200,11 @@ export default async function LandingPage() {
       <footer className="foot">
         <Logo />
         <div className="foot-links">
-          <a>Manifesto</a>
-          <a>How we stay safe</a>
-          <a>Press</a>
-          <a>Careers</a>
-          <a>Contact</a>
+          <Link href="/legal/community">Manifesto</Link>
+          <Link href="/legal/privacy">How we stay safe</Link>
+          <Link href="/legal/terms">Terms</Link>
+          <Link href="/legal/kvkk">KVKK</Link>
+          <Link href="/legal/notice-takedown">Notice &amp; Takedown</Link>
         </div>
         <div className="foot-meta">© Anonim 2032 — built quietly, for the questions you carry.</div>
       </footer>

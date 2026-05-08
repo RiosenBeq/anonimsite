@@ -8,6 +8,7 @@ import "@/styles/feed.css";
 import "@/styles/detail.css";
 import "@/styles/ask.css";
 import "@/styles/explore.css";
+import "@/styles/legal.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

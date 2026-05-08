@@ -16,6 +16,17 @@ export type Json =
 
 export type ReactionKind = "honest" | "warm" | "useful" | "deep";
 export type TopicColorEnum = "accent" | "violet" | "warm" | "lime";
+export type ReportReason =
+  | "csam"
+  | "violence_threat"
+  | "hate_harassment"
+  | "self_harm"
+  | "illegal_activity"
+  | "spam_scam"
+  | "personal_info"
+  | "other";
+export type ReportTarget = "question" | "answer";
+export type ReportStatus = "open" | "reviewed" | "actioned" | "dismissed";
 
 export type Database = {
   __InternalSupabase: { PostgrestVersion: "14.5" };
@@ -131,6 +142,34 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["topic_follows"]["Insert"]>;
         Relationships: [];
       };
+      reports: {
+        Row: {
+          id: string;
+          target_type: ReportTarget;
+          target_id: string;
+          reason: ReportReason;
+          details: string;
+          reporter_session: string;
+          status: ReportStatus;
+          created_at: string;
+          reviewed_at: string | null;
+          reviewer_note: string;
+        };
+        Insert: {
+          id?: string;
+          target_type: ReportTarget;
+          target_id: string;
+          reason: ReportReason;
+          details?: string;
+          reporter_session: string;
+          status?: ReportStatus;
+          created_at?: string;
+          reviewed_at?: string | null;
+          reviewer_note?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["reports"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -173,10 +212,23 @@ export type Database = {
         Args: { p_session: string; p_question_id: string };
         Returns: { answer_id: string; kind: ReactionKind }[];
       };
+      app_report_content: {
+        Args: {
+          p_session: string;
+          p_target_type: ReportTarget;
+          p_target_id: string;
+          p_reason: ReportReason;
+          p_details: string;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       reaction_kind: ReactionKind;
       topic_color: TopicColorEnum;
+      report_reason: ReportReason;
+      report_target: ReportTarget;
+      report_status: ReportStatus;
     };
     CompositeTypes: Record<string, never>;
   };

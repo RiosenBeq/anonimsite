@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { IconBookmark, IconMore, IconMsg, IconShield } from "@/components/icons";
+import { IconBookmark, IconMore, IconMsg } from "@/components/icons";
 import { PulseDot } from "@/components/primitives";
+import { ReportButton } from "@/components/ReportButton";
 import { HelpfulnessRing } from "@/components/detail/HelpfulnessRing";
 import { toggleReactionAction } from "@/lib/actions";
 import type { Answer } from "@/lib/types";
@@ -123,9 +124,7 @@ export function AnswerBlock({ answer: a, initialCounts, initialMine }: AnswerBlo
           <button className="micro-btn" type="button">
             <IconMsg size={12} /> Reply quietly
           </button>
-          <button className="micro-btn" type="button">
-            <IconShield size={12} /> Flag
-          </button>
+          <ReportButton targetType="answer" targetId={a.id} />
         </div>
       </footer>
     </article>
