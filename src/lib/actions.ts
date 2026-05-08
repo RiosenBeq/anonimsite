@@ -1,10 +1,12 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { maskBannedWords } from "@/lib/moderation";
 import { ensureAnonimSession } from "@/lib/session";
 import { generatePseudonym } from "@/lib/pseudonyms";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { verifyTurnstile } from "@/lib/turnstile";
 import {
   askQuestionSchema,
   postAnswerSchema,
@@ -27,6 +29,61 @@ export type ActionResult<T = unknown> =
 const MASK_WARNING_TR =
   "Bazı kelimeler topluluk kuralları gereği maskelendi (cinayet/uyuşturucu/şiddet vb. ifadeler).";
 
+// Forms render with a `renderedAt` timestamp; submissions in less than
+// this many ms are treated as bot-driven.
+const MIN_FILL_MS = 1500;
+
+interface AntiAbuseInput {
+  hp?: string;
+  renderedAt?: number;
+  turnstileToken?: string;
+}
+
+interface AntiAbuseDecision {
+  silentlyDrop: boolean; // honeypot tripped — pretend success
+  reject?: string; // user-visible error message (Turnstile failure, etc.)
+}
+
+async function evaluateAntiAbuse(input: AntiAbuseInput): Promise<AntiAbuseDecision> {
+  if ((input.hp ?? "").trim().length > 0) {
+    return { silentlyDrop: true };
+  }
+  if (typeof input.renderedAt === "number" && Date.now() - input.renderedAt < MIN_FILL_MS) {
+    return { silentlyDrop: true };
+  }
+  const ip =
+    (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    (await headers()).get("x-real-ip") ??
+    undefined;
+  const t = await verifyTurnstile(input.turnstileToken, ip);
+  if (!t.ok) {
+    return {
+      silentlyDrop: false,
+      reject: "Bot doğrulaması başarısız oldu. Sayfayı yenileyip tekrar dener misin?",
+    };
+  }
+  return { silentlyDrop: false };
+}
+
+// Maps Postgres RPC error messages (raised via `errcode = '22023'`) to
+// Turkish user-facing strings. Falls back to the raw error if unknown.
+function rpcErrorToTr(message: string | undefined): string {
+  switch (message) {
+    case "rate_limited_hour":
+      return "Saatlik gönderim limitine ulaştın. Bir süre sonra tekrar dener misin?";
+    case "rate_limited_minute":
+      return "Çok hızlı gidiyorsun — bir dakika sonra tekrar dene.";
+    case "duplicate_title":
+      return "Bu başlığı son 24 saatte zaten gönderdin.";
+    case "duplicate_body":
+      return "Bu cevabı son 24 saatte zaten yazdın.";
+    case "rate_limited":
+      return "Çok fazla rapor gönderdin, biraz bekle.";
+    default:
+      return message ?? "Bir şeyler ters gitti.";
+  }
+}
+
 // ---------------- ASK QUESTION ----------------
 export async function askQuestionAction(
   input: AskQuestionInput,
@@ -34,6 +91,15 @@ export async function askQuestionAction(
   const parsed = askQuestionSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const ab = await evaluateAntiAbuse(parsed.data);
+  if (ab.silentlyDrop) {
+    // Pretend success so bots can't probe what tripped the trap.
+    return { ok: true, data: { questionId: "" } };
+  }
+  if (ab.reject) {
+    return { ok: false, error: ab.reject };
   }
 
   const session = await ensureAnonimSession();
@@ -53,7 +119,7 @@ export async function askQuestionAction(
     p_pseudonym: pseudonym,
   });
 
-  if (error || !data) return { ok: false, error: error?.message ?? "Could not ask question" };
+  if (error || !data) return { ok: false, error: rpcErrorToTr(error?.message) };
 
   revalidatePath("/feed");
   revalidatePath("/explore");
@@ -74,6 +140,14 @@ export async function postAnswerAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
+  const ab = await evaluateAntiAbuse(parsed.data);
+  if (ab.silentlyDrop) {
+    return { ok: true, data: { answerId: "" } };
+  }
+  if (ab.reject) {
+    return { ok: false, error: ab.reject };
+  }
+
   const session = await ensureAnonimSession();
   const supabase = await createSupabaseServerClient();
   const pseudonym = generatePseudonym();
@@ -87,7 +161,7 @@ export async function postAnswerAction(
     p_pseudonym: pseudonym,
   });
 
-  if (error || !data) return { ok: false, error: error?.message ?? "Could not post answer" };
+  if (error || !data) return { ok: false, error: rpcErrorToTr(error?.message) };
 
   revalidatePath(`/q/${parsed.data.questionId}`);
   return {
@@ -193,6 +267,6 @@ export async function reportContentAction(
     p_details: parsed.data.details ?? "",
   });
 
-  if (error || !data) return { ok: false, error: error?.message ?? "Could not file report" };
+  if (error || !data) return { ok: false, error: rpcErrorToTr(error?.message) };
   return { ok: true, data: { reportId: data as unknown as string } };
 }

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { IconArrow, IconCheck, IconClose, IconShield } from "@/components/icons";
 import { AiMark, Eyebrow, PulseDot } from "@/components/primitives";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { askQuestionAction } from "@/lib/actions";
 import { generatePseudonym } from "@/lib/pseudonyms";
 import { askQuestionSchema } from "@/lib/validators";
@@ -38,6 +39,16 @@ export function AskFlow({ topics, similarQuestions }: AskFlowProps) {
   const [pseudonym, setPseudonym] = useState(() => generatePseudonym());
   const [error, setError] = useState<string | null>(null);
   const [postedId, setPostedId] = useState<string | null>(null);
+
+  // Anti-abuse fields. `hp` is a honeypot (humans don't see it), `renderedAt`
+  // is the form-mount timestamp (used for the time-to-submit floor),
+  // `turnstileToken` is the Cloudflare challenge token.
+  const [hp, setHp] = useState("");
+  const renderedAt = useRef<number>(Date.now());
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const turnstileRequired = !!process.env.NEXT_PUBLIC_CF_TURNSTILE_SITE_KEY;
+  const onTurnstileToken = useCallback((t: string) => setTurnstileToken(t), []);
+  const onTurnstileError = useCallback(() => setTurnstileToken(""), []);
 
   const toggleMood = (m: string) =>
     setMoods((ms) => (ms.includes(m) ? ms.filter((x) => x !== m) : [...ms, m].slice(0, 3)));
@@ -75,9 +86,16 @@ export function AskFlow({ topics, similarQuestions }: AskFlowProps) {
       context,
       topicSlug: topic ?? "",
       moods,
+      hp,
+      renderedAt: renderedAt.current,
+      turnstileToken,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+    if (turnstileRequired && !turnstileToken) {
+      setError("Bot doğrulamasını tamamlayıp tekrar dener misin?");
       return;
     }
     startTransition(async () => {
@@ -284,6 +302,24 @@ export function AskFlow({ topics, similarQuestions }: AskFlowProps) {
                 </div>
               )}
 
+              {turnstileRequired && (
+                <div style={{ marginTop: 16 }}>
+                  <TurnstileWidget onToken={onTurnstileToken} onError={onTurnstileError} />
+                </div>
+              )}
+
+              {/* Honeypot — hidden from humans, magnet for bots. */}
+              <label className="hp-field" aria-hidden="true">
+                Website
+                <input
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={hp}
+                  onChange={(e) => setHp(e.target.value)}
+                />
+              </label>
+
               <div className="ask-actions">
                 <button
                   className="btn btn-pill-dark"
@@ -298,7 +334,7 @@ export function AskFlow({ topics, similarQuestions }: AskFlowProps) {
                   type="button"
                   className="btn btn-primary"
                   style={{ padding: "12px 22px", fontSize: 14 }}
-                  disabled={pending}
+                  disabled={pending || (turnstileRequired && !turnstileToken)}
                   onClick={submit}
                 >
                   {pending ? "Sending…" : "Send anonymously"} <IconArrow size={13} />
