@@ -122,8 +122,7 @@ function TR() {
 
       <h2>10. İletişim</h2>
       <p>
-        Hukuki bildirimler için: <a href="mailto:legal@anonim.example">legal@anonim.example</a>{" "}
-        (yer tutucu — yayına alınmadan önce gerçek adresle güncellenmelidir).
+        Hukuki bildirimler için: <a href="mailto:legal@anonim.org">legal@anonim.org</a>.
       </p>
     </article>
   );
@@ -216,8 +215,7 @@ function EN() {
 
       <h2>10. Contact</h2>
       <p>
-        Legal notices: <a href="mailto:legal@anonim.example">legal@anonim.example</a>{" "}
-        (placeholder — replace with the real address before going public).
+        Legal notices: <a href="mailto:legal@anonim.org">legal@anonim.org</a>.
       </p>
     </article>
   );

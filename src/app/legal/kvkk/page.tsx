@@ -36,7 +36,7 @@ function TR() {
       <p>
         Veri sorumlusu sıfatıyla, <strong>Anonim</strong> (yer tutucu unvan/adres yayına
         alınmadan önce eklenecektir). İletişim:{" "}
-        <a href="mailto:kvkk@anonim.example">kvkk@anonim.example</a>.
+        <a href="mailto:kvkk@anonim.org">kvkk@anonim.org</a>.
       </p>
 
       <h2>2. İşlenen Kişisel Veriler</h2>
@@ -95,7 +95,7 @@ function TR() {
       <h2>7. Başvuru Yöntemi</h2>
       <p>
         Başvurularınızı, kimliğinizin doğrulanmasına yardımcı olacak bilgilerle birlikte{" "}
-        <a href="mailto:kvkk@anonim.example">kvkk@anonim.example</a> adresine iletebilirsiniz.
+        <a href="mailto:kvkk@anonim.org">kvkk@anonim.org</a> adresine iletebilirsiniz.
         Anonim&apos;e özgü bir kimlik tutmadığımız için doğrulamada{" "}
         <code>anonim_session</code> çerezinizdeki UUID&apos;yi kullanmanızı isteyebiliriz.
       </p>
@@ -129,7 +129,7 @@ function EN() {
       <h2>1. Data Controller</h2>
       <p>
         <strong>Anonim</strong> (placeholder operator details to be filled in). Contact:{" "}
-        <a href="mailto:kvkk@anonim.example">kvkk@anonim.example</a>.
+        <a href="mailto:kvkk@anonim.org">kvkk@anonim.org</a>.
       </p>
 
       <h2>2. Categories of Data</h2>
@@ -183,7 +183,7 @@ function EN() {
       <h2>7. How to Apply</h2>
       <p>
         Send your request, with information enabling identification, to{" "}
-        <a href="mailto:kvkk@anonim.example">kvkk@anonim.example</a>. Since we hold no
+        <a href="mailto:kvkk@anonim.org">kvkk@anonim.org</a>. Since we hold no
         Anonim-specific identifier, we may ask for the UUID in your <code>anonim_session</code>{" "}
         cookie to verify ownership. We respond within <strong>30 days</strong>. You may also
         complain to the Turkish DPA (KVKK).

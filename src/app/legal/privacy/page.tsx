@@ -36,7 +36,7 @@ function TR() {
       <h2>1. Veri Sorumlusu</h2>
       <p>
         Anonim — yer tutucu unvan ve adres yayına alınmadan önce burada yer alacak. İletişim:{" "}
-        <a href="mailto:privacy@anonim.example">privacy@anonim.example</a>.
+        <a href="mailto:privacy@anonim.org">privacy@anonim.org</a>.
       </p>
 
       <h2>2. İşlediğimiz Veriler</h2>
@@ -114,7 +114,7 @@ function TR() {
         (ör. ilgili oturum çerezinden gönderilen bir doğrulama kodu) talep edebiliriz.
       </p>
       <p>
-        Başvuru: <a href="mailto:privacy@anonim.example">privacy@anonim.example</a>. Yanıt süremiz
+        Başvuru: <a href="mailto:privacy@anonim.org">privacy@anonim.org</a>. Yanıt süremiz
         en geç <strong>30 gündür</strong>. Cevabımızı yetersiz bulursanız Kişisel Verileri Koruma
         Kuruluna şikayet hakkınız saklıdır (<a href="https://www.kvkk.gov.tr/">kvkk.gov.tr</a>).
       </p>
@@ -149,7 +149,7 @@ function EN() {
       <h2>1. Controller</h2>
       <p>
         Anonim — placeholder operator details to be filled in before launch. Contact:{" "}
-        <a href="mailto:privacy@anonim.example">privacy@anonim.example</a>.
+        <a href="mailto:privacy@anonim.org">privacy@anonim.org</a>.
       </p>
 
       <h2>2. Data we process</h2>
@@ -219,7 +219,7 @@ function EN() {
         oppose transfer. We may ask for a verification step using your existing session cookie.
       </p>
       <p>
-        Requests: <a href="mailto:privacy@anonim.example">privacy@anonim.example</a>. We respond
+        Requests: <a href="mailto:privacy@anonim.org">privacy@anonim.org</a>. We respond
         within <strong>30 days</strong>. If you find our response insufficient, you may complain
         to the Turkish DPA (KVKK) at <a href="https://www.kvkk.gov.tr/">kvkk.gov.tr</a>.
       </p>

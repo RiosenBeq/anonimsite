@@ -48,8 +48,7 @@ function TR() {
       </p>
       <ul>
         <li>
-          E-posta: <a href="mailto:legal@anonim.example">legal@anonim.example</a>
-          {" "}(yer tutucu — yayına alınmadan önce gerçek adresle güncellenmelidir)
+          E-posta: <a href="mailto:legal@anonim.org">legal@anonim.org</a>
         </li>
       </ul>
       <p>Başvurunun şunları içermesi sürecin hızlanmasını sağlar:</p>
@@ -123,8 +122,7 @@ function EN() {
       </p>
       <ul>
         <li>
-          Email: <a href="mailto:legal@anonim.example">legal@anonim.example</a>
-          {" "}(placeholder — replace with the real address before going public)
+          Email: <a href="mailto:legal@anonim.org">legal@anonim.org</a>
         </li>
       </ul>
       <p>To accelerate review, include:</p>

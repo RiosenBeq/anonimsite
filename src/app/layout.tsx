@@ -31,6 +31,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://anonim.org"),
   title: "Anonim — Ask what you can't ask anywhere else.",
   description:
     "Anonim is a quiet, anonymous place for the questions you carry around but never quite say out loud. Honest answers, from people who've been there.",
